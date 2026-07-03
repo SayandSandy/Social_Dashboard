@@ -5,6 +5,10 @@ export const users = pgTable('users', {
   email: text('email'),
   igAccessToken: text('ig_access_token'),
   igBusinessAccountId: text('ig_business_account_id'),
+  aiProvider: text('ai_provider').default('anthropic'),
+  aiApiKey: text('ai_api_key'),
+  telegramChatId: text('telegram_chat_id'),
+  telegramConnectCode: text('telegram_connect_code'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

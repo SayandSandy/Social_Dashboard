@@ -2,6 +2,11 @@ import { InsightsRepository } from '../../../repositories/insights.repository';
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Sparkles, TrendingUp, TrendingDown, Lightbulb, Target } from 'lucide-react';
 import { createClient } from '../../../lib/supabase/server';
+import { AIKeyManager } from '../../../components/ui/AIKeyManager';
+import { ChatIntegration } from '../../../components/ui/ChatIntegration';
+import { db } from '../../../db';
+import { users } from '../../../db/schema';
+import { eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +14,9 @@ export default async function AIInsightsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+
+  const dbUsers = await db.select().from(users).where(eq(users.id, user.id));
+  const dbUser = dbUsers[0];
 
   const insightsRepo = new InsightsRepository();
   const latestInsight = await insightsRepo.getLatest(user.id);
@@ -26,6 +34,14 @@ export default async function AIInsightsPage() {
       <div className="flex items-center space-x-3">
         <Sparkles className="w-8 h-8 text-indigo-400" />
         <h1 className="text-3xl font-bold">AI Insights</h1>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AIKeyManager initialProvider={dbUser?.aiProvider || 'anthropic'} />
+        <ChatIntegration 
+          hasAiSettings={!!(dbUser?.aiProvider && dbUser?.aiApiKey)} 
+          telegramChatId={dbUser?.telegramChatId}
+        />
       </div>
 
       {!latestInsight ? (
