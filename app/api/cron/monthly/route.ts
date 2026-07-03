@@ -10,7 +10,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const aiService = new AIInsightsService();
     const contentRepo = new ContentRepository();
 
     const end = new Date();
@@ -25,8 +24,10 @@ export async function GET(request: Request) {
 
     for (const user of allUsers) {
       if (!user.igAccessToken || !user.igBusinessAccountId) continue;
+      if (!user.aiProvider || !user.aiApiKey) continue; // Requires AI settings now
 
       const analyticsService = new AnalyticsService(user.id);
+      const aiService = new AIInsightsService(user.aiProvider, user.aiApiKey);
       const accountData = await analyticsService.getDashboardData(start, end);
       const mediaData = await contentRepo.getAllContent(user.id); 
 
