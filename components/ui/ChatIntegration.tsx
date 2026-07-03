@@ -26,8 +26,6 @@ export function ChatIntegration({ hasAiSettings, telegramChatId }: ChatIntegrati
       // Generate a random 6-digit code
       const newCode = Math.floor(100000 + Math.random() * 900000).toString();
       
-      const { db } = await import('../../db');
-      // Wait, we cannot import 'db' directly in a Client Component because it uses pg and postgres!
       // We must use an API route to generate the code securely.
       
       const res = await fetch('/api/users/generate-code', { method: 'POST' });
