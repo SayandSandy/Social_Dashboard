@@ -2,8 +2,7 @@ import { InsightsRepository } from '../../../repositories/insights.repository';
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Sparkles, TrendingUp, TrendingDown, Lightbulb, Target } from 'lucide-react';
 import { createClient } from '../../../lib/supabase/server';
-import { AIKeyManager } from '../../../components/ui/AIKeyManager';
-import { ChatIntegration } from '../../../components/ui/ChatIntegration';
+import Link from 'next/link';
 import { db } from '../../../db';
 import { users } from '../../../db/schema';
 import { eq } from 'drizzle-orm';
@@ -36,13 +35,18 @@ export default async function AIInsightsPage() {
         <h1 className="text-3xl font-bold">AI Insights</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AIKeyManager initialProvider={dbUser?.aiProvider || 'anthropic'} />
-        <ChatIntegration 
-          hasAiSettings={!!(dbUser?.aiProvider && dbUser?.aiApiKey)} 
-          telegramChatId={dbUser?.telegramChatId}
-        />
-      </div>
+      {!dbUser?.aiProvider || !dbUser?.aiApiKey ? (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-6 rounded-lg flex flex-col items-center text-center space-y-4">
+          <Sparkles className="w-8 h-8" />
+          <div>
+            <h3 className="font-semibold text-lg">AI Not Connected</h3>
+            <p className="text-amber-500/80">Connect an AI provider in Settings to unlock deep, automated insights into your Instagram growth.</p>
+          </div>
+          <Link href="/settings" className="bg-amber-500 hover:bg-amber-600 text-amber-950 font-semibold px-6 py-2 rounded-md transition-colors">
+            Go to Settings
+          </Link>
+        </div>
+      ) : null}
 
       {!latestInsight ? (
         <div className="text-slate-400">No AI insights available yet.</div>

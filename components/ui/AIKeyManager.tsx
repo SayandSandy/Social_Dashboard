@@ -7,9 +7,10 @@ import { Settings, Key } from 'lucide-react';
 
 interface AIKeyManagerProps {
   initialProvider?: string;
+  hasKey?: boolean;
 }
 
-export function AIKeyManager({ initialProvider = 'anthropic' }: AIKeyManagerProps) {
+export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false }: AIKeyManagerProps) {
   const [provider, setProvider] = useState(initialProvider);
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -70,7 +71,7 @@ export function AIKeyManager({ initialProvider = 'anthropic' }: AIKeyManagerProp
                 type="password" 
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder={hasKey ? "••••••••••••••••" : "sk-..."}
                 className="w-full bg-slate-950 border border-slate-800 rounded-md py-2 pl-10 pr-3 text-white outline-none focus:border-indigo-500"
               />
             </div>
