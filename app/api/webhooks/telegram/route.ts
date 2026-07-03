@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     try {
       await sendMessage('Thinking... 🧠');
       
-      const aiService = new AIInsightsService(user.aiProvider, user.aiApiKey);
+      const aiService = new AIInsightsService(user.aiProvider, user.aiApiKey, user.aiBaseUrl, user.aiModel);
       const answer = await aiService.chatWithAnalytics(user.id, text);
       
       await sendMessage(answer);

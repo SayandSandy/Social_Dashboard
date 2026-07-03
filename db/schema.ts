@@ -7,6 +7,8 @@ export const users = pgTable('users', {
   igBusinessAccountId: text('ig_business_account_id'),
   aiProvider: text('ai_provider').default('anthropic'),
   aiApiKey: text('ai_api_key'),
+  aiBaseUrl: text('ai_base_url'),
+  aiModel: text('ai_model'),
   telegramChatId: text('telegram_chat_id'),
   telegramConnectCode: text('telegram_connect_code'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

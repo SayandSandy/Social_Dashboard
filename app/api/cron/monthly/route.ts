@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       if (!user.aiProvider || !user.aiApiKey) continue; // Requires AI settings now
 
       const analyticsService = new AnalyticsService(user.id);
-      const aiService = new AIInsightsService(user.aiProvider, user.aiApiKey);
+      const aiService = new AIInsightsService(user.aiProvider, user.aiApiKey, user.aiBaseUrl, user.aiModel);
       const accountData = await analyticsService.getDashboardData(start, end);
       const mediaData = await contentRepo.getAllContent(user.id); 
 

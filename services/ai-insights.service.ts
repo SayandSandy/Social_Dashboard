@@ -10,15 +10,25 @@ import { AIInsightsSchema, AIInsightsOutput } from '../schemas/insights.schema';
 export class AIInsightsService {
   private providerName: string;
   private apiKey: string;
+  private baseUrl?: string | null;
+  private modelName?: string | null;
   private insightsRepo = new InsightsRepository();
 
-  constructor(providerName: string, apiKey: string) {
+  constructor(providerName: string, apiKey: string, baseUrl?: string | null, modelName?: string | null) {
     this.providerName = providerName.toLowerCase();
     this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
+    this.modelName = modelName;
   }
 
   private getModel(task: 'structured' | 'chat') {
-    if (this.providerName === 'openai') {
+    if (this.providerName === 'custom') {
+      const openaiCustom = createOpenAI({ 
+        apiKey: this.apiKey, 
+        baseURL: this.baseUrl || undefined 
+      });
+      return openaiCustom(this.modelName || 'gpt-4o');
+    } else if (this.providerName === 'openai') {
       const openai = createOpenAI({ apiKey: this.apiKey });
       return openai(task === 'structured' ? 'gpt-4o' : 'gpt-4o');
     } else if (this.providerName === 'google') {

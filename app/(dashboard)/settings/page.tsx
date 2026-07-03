@@ -41,6 +41,8 @@ export default async function SettingsPage() {
           <AIKeyManager 
             initialProvider={userData?.aiProvider || 'openai'} 
             hasKey={!!userData?.aiApiKey} 
+            initialBaseUrl={userData?.aiBaseUrl}
+            initialModel={userData?.aiModel}
           />
         </section>
 

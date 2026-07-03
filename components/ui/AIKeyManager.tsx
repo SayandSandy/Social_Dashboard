@@ -8,11 +8,15 @@ import { Settings, Key } from 'lucide-react';
 interface AIKeyManagerProps {
   initialProvider?: string;
   hasKey?: boolean;
+  initialBaseUrl?: string | null;
+  initialModel?: string | null;
 }
 
-export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false }: AIKeyManagerProps) {
+export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false, initialBaseUrl, initialModel }: AIKeyManagerProps) {
   const [provider, setProvider] = useState(initialProvider);
   const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState(initialBaseUrl || '');
+  const [model, setModel] = useState(initialModel || '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -23,7 +27,7 @@ export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false }: 
       const res = await fetch('/api/users/ai-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aiProvider: provider, aiApiKey: apiKey })
+        body: JSON.stringify({ aiProvider: provider, aiApiKey: apiKey, aiBaseUrl: baseUrl, aiModel: model })
       });
       
       if (!res.ok) throw new Error('Failed to save');
@@ -59,6 +63,7 @@ export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false }: 
               <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
               <option value="openai">OpenAI (GPT-4o)</option>
               <option value="google">Google (Gemini 1.5 Pro)</option>
+              <option value="custom">Custom (OpenAI Compatible)</option>
             </select>
           </div>
           <div className="flex-[2]">
@@ -82,6 +87,30 @@ export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false }: 
             </Button>
           </div>
         </div>
+        {provider === 'custom' && (
+          <div className="flex flex-col md:flex-row gap-4 mt-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-400 mb-1">Base URL</label>
+              <input 
+                type="text" 
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://api.groq.com/openai/v1"
+                className="w-full bg-slate-950 border border-slate-800 rounded-md p-2 text-white outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex-[2]">
+              <label className="block text-sm font-medium text-slate-400 mb-1">Model Name</label>
+              <input 
+                type="text" 
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="llama3-70b-8192"
+                className="w-full bg-slate-950 border border-slate-800 rounded-md p-2 text-white outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+        )}
         {message && (
           <div className={`mt-3 text-sm ${message.includes('success') ? 'text-emerald-400' : 'text-red-400'}`}>
             {message}
