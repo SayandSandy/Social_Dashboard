@@ -56,8 +56,8 @@ Be specific, data-driven, and actionable. Avoid generic advice.`;
         model: this.providerName,
         promptVersion: 2,
         ...object,
-        inputTokenCount: usage.promptTokens,
-        outputTokenCount: usage.completionTokens
+        inputTokenCount: usage.inputTokens || 0,
+        outputTokenCount: usage.outputTokens || 0
       });
 
       return object;
