@@ -14,19 +14,29 @@ export class SyncService {
     this.igUsername = igUsername;
   }
 
-  private async fetchRapidAPI(endpoint: string, params: Record<string, string>) {
-    // We are using a standard RapidAPI Instagram Scraper here.
-    // Ensure RAPIDAPI_KEY is in .env.local
-    const url = new URL(`https://instagram-scraper-api2.p.rapidapi.com/v1/${endpoint}`);
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+  private async fetchRapidAPI(endpoint: string, params: Record<string, any>, method: 'GET' | 'POST' = 'GET') {
+    const host = 'instagram-scraper-stable-api.p.rapidapi.com';
+    let url = `https://${host}/${endpoint}`;
     
-    const res = await fetch(url.toString(), {
+    let options: RequestInit = {
+      method,
       headers: {
         'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
-        'x-rapidapi-host': 'instagram-scraper-api2.p.rapidapi.com'
+        'x-rapidapi-host': host,
       }
-    });
-    if (!res.ok) throw new Error(`RapidAPI Error: ${res.statusText}`);
+    };
+
+    if (method === 'GET') {
+      const searchParams = new URLSearchParams();
+      Object.keys(params).forEach(key => searchParams.append(key, String(params[key])));
+      url += `?${searchParams.toString()}`;
+    } else {
+      (options.headers as any)['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(params);
+    }
+    
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error(`RapidAPI Error: ${res.status} ${res.statusText}`);
     return res.json();
   }
 
@@ -42,8 +52,12 @@ export class SyncService {
 
     try {
       // 1. Fetch Profile Info
-      const profileData = await this.fetchRapidAPI('info', { username_or_id_or_url: this.igUsername });
-      const user = profileData.data;
+      // NOTE: Update the endpoint name here if it differs in your RapidAPI Snippet!
+      // Often parameters are named 'username', 'user', or 'username_or_url'.
+      const profileData = await this.fetchRapidAPI('ig_get_ib_profile_hover_php', { username: this.igUsername }, 'GET');
+      const user = profileData.user_data;
+
+      if (!user) throw new Error("Could not parse user_data from API");
 
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -56,33 +70,37 @@ export class SyncService {
         followersCount: user.follower_count,
         followingCount: user.following_count,
         mediaCount: user.media_count,
-        // The following are not available in unofficial APIs, so we leave them null
-        views: null,
-        reach: null,
-        accountsEngaged: null,
-        profileActivity: null,
-        websiteClicks: null,
+        views: null, // Private metric
+        reach: null, // Private metric
+        accountsEngaged: null, // Private metric
+        profileActivity: null, // Private metric
+        websiteClicks: null, // Private metric
       } as any);
 
       let rowsUpserted = 1;
 
-      // 2. Fetch Latest Posts
-      const postsData = await this.fetchRapidAPI('posts', { username_or_id_or_url: this.igUsername });
-      const items = postsData.data?.items || [];
+      // 2. Fetch Latest Posts with Likes & Comments
+      // NOTE: Update the endpoint name here if it differs!
+      const postsData = await this.fetchRapidAPI('user_posts', { username: this.igUsername }, 'POST');
+      const posts = postsData.posts || [];
 
-      for (const item of items) {
+      for (const item of posts) {
+        const node = item.node;
+        const mediaType = node.media_type === 1 ? 'IMAGE' : node.media_type === 2 ? 'VIDEO' : 'CAROUSEL_ALBUM';
+        const timestamp = new Date((node.taken_at || 0) * 1000);
+        
         // Upsert media base data
         await this.contentRepo.upsertContent({
           accountId: this.accountId,
-          igMediaId: item.id,
-          mediaType: item.media_type === 1 ? 'IMAGE' : item.media_type === 2 ? 'VIDEO' : 'CAROUSEL_ALBUM',
-          caption: item.caption?.text || '',
-          permalink: `https://instagram.com/p/${item.code}`,
-          thumbnailUrl: item.thumbnail_url || item.image_versions2?.candidates?.[0]?.url,
-          timestamp: new Date(item.taken_at * 1000),
-          likeCount: item.like_count,
-          commentsCount: item.comment_count,
-          views: item.play_count || null,
+          igMediaId: node.id,
+          mediaType: mediaType,
+          caption: node.caption?.text || '',
+          permalink: `https://instagram.com/p/${node.code}`,
+          thumbnailUrl: node.image_versions2?.candidates?.[0]?.url || '',
+          timestamp: timestamp,
+          likeCount: node.like_count || 0,
+          commentsCount: node.comment_count || 0,
+          views: node.view_count || null,
           isStory: false,
           syncedAt: new Date()
         });
@@ -90,11 +108,11 @@ export class SyncService {
         // Upsert Snapshot
         await this.contentRepo.upsertSnapshot({
           accountId: this.accountId,
-          igMediaId: item.id,
+          igMediaId: node.id,
           snapshotDate: dateStr,
-          likeCount: item.like_count,
-          commentsCount: item.comment_count,
-          views: item.play_count || null,
+          likeCount: node.like_count || 0,
+          commentsCount: node.comment_count || 0,
+          views: node.view_count || null,
           reach: null, // Private metric
           savedCount: null, // Private metric
           sharesCount: null, // Private metric
