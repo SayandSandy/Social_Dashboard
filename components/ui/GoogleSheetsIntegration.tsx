@@ -14,7 +14,7 @@ export function GoogleSheetsIntegration({ initialGoogleSheetId }: GoogleSheetsIn
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const serviceAccountEmail = process.env.NEXT_PUBLIC_GOOGLE_SERVICE_ACCOUNT_EMAIL || 'advika-sheets-service@your-project.iam.gserviceaccount.com';
+  const serviceAccountEmail = process.env.NEXT_PUBLIC_GOOGLE_SERVICE_ACCOUNT_EMAIL || 'social-dashboard-service@your-project.iam.gserviceaccount.com';
 
   const handleSave = async () => {
     setSaving(true);
