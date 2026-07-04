@@ -1,6 +1,10 @@
 import { OverviewRepository } from '../repositories/overview.repository';
 import { ContentRepository } from '../repositories/content.repository';
 import { SyncLogRepository } from '../repositories/sync-log.repository';
+import { GoogleSheetsService } from './google-sheets.service';
+import { db } from '../db';
+import { users } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 export class SyncService {
   private overviewRepo = new OverviewRepository();
@@ -127,6 +131,29 @@ export class SyncService {
         finishedAt: new Date(),
         rowsUpserted
       });
+
+      // Push to Google Sheets if configured
+      const userList = await db.select().from(users).where(eq(users.id, this.accountId));
+      if (userList.length > 0 && userList[0].googleSheetId) {
+        try {
+          const sheetsService = new GoogleSheetsService(userList[0].googleSheetId);
+          
+          await sheetsService.appendOverview({
+            followerCount: user.follower_count,
+            mediaCount: user.media_count,
+            // RapidAPI missing fields are sent as 0 to maintain column structure
+            totalViews: 0,
+            totalInteractions: 0,
+            profileViews: 0
+          });
+
+          // Fetch recent posts to sync
+          const recentPosts = await this.contentRepo.getRecentContent(this.accountId, 20);
+          await sheetsService.updatePosts(recentPosts);
+        } catch (sheetErr) {
+          console.error('Failed to sync to Google Sheets:', sheetErr);
+        }
+      }
 
       return { success: true, rowsUpserted };
 

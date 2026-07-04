@@ -4,6 +4,7 @@ import { users } from '../../../db/schema';
 import { eq } from 'drizzle-orm';
 import { AIKeyManager } from '../../../components/ui/AIKeyManager';
 import { ChatIntegration } from '../../../components/ui/ChatIntegration';
+import { GoogleSheetsIntegration } from '../../../components/ui/GoogleSheetsIntegration';
 import { LogOutButton } from '../../../components/ui/LogOutButton';
 import { InstagramConnect } from '../../../components/ui/InstagramConnect';
 
@@ -58,6 +59,9 @@ export default async function SettingsPage() {
             hasAiSettings={hasAiSettings}
             telegramChatId={userData?.telegramChatId}
             telegramBotToken={userData?.telegramBotToken}
+          />
+          <GoogleSheetsIntegration 
+            initialGoogleSheetId={userData?.googleSheetId}
           />
         </section>
       </div>

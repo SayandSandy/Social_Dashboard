@@ -12,6 +12,7 @@ export const users = pgTable('users', {
   aiModel: text('ai_model'),
   telegramChatId: text('telegram_chat_id'),
   telegramBotToken: text('telegram_bot_token'),
+  googleSheetId: text('google_sheet_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
