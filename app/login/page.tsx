@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import { createClient } from '../../lib/supabase/client'
 import { Button } from '../../components/ui/button'
+import { useRouter } from 'next/navigation'
+import { AtSign } from 'lucide-react'
 
 export default function LoginPage() {
   const supabase = createClient()
-  const [email, setEmail] = useState('')
+  const router = useRouter()
+  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -15,44 +18,76 @@ export default function LoginPage() {
     setLoading(true);
     setMessage('');
     
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    
-    if (error) {
-      setMessage(`Error: ${error.message}`)
-    } else {
-      setMessage('Check your email for the login link!')
+    try {
+      const formattedUsername = username.replace('@', '').trim();
+      if (!formattedUsername) throw new Error("Username is required");
+
+      setMessage('Provisioning your dashboard...');
+      
+      // 1. Provision the account
+      const res = await fetch('/api/auth/provision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: formattedUsername })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to provision account');
+
+      setMessage('Logging you in...');
+
+      // 2. Log in with the auto-generated credentials
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+
+      // 3. Kick off sync
+      setMessage('Syncing Instagram data...');
+      fetch('/api/sync', { method: 'POST' }).catch(console.error); // Fire and forget
+
+      // 4. Redirect
+      router.push('/dashboard');
+      router.refresh();
+
+    } catch (err: any) {
+      setMessage(`Error: ${err.message}`);
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 items-center justify-center text-slate-100">
+    <div className="flex min-h-screen bg-slate-950 items-center justify-center text-slate-100 p-4">
       <div className="max-w-md w-full p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-xl flex flex-col items-center text-center space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">Instagram Analytics</h1>
-          <p className="text-slate-400">Enter your email to log in</p>
+          <p className="text-slate-400">Enter any Instagram username to instantly view their dashboard</p>
         </div>
         
         <form onSubmit={handleLogin} className="w-full space-y-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-            className="w-full bg-slate-950 border border-slate-800 rounded-md p-3 text-white outline-none focus:border-indigo-500"
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <AtSign className="h-5 w-5 text-slate-500" />
+            </div>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="zuck"
+              required
+              className="w-full bg-slate-950 border border-slate-800 rounded-md py-3 pl-10 pr-3 text-white outline-none focus:border-indigo-500"
+            />
+          </div>
           <Button 
             type="submit"
-            disabled={loading}
+            disabled={loading || !username}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-6"
           >
-            {loading ? 'Sending link...' : 'Send Magic Link'}
+            {loading ? 'Connecting...' : 'View Dashboard'}
           </Button>
         </form>
         
@@ -61,10 +96,6 @@ export default function LoginPage() {
             {message}
           </p>
         )}
-        
-        <p className="text-xs text-slate-500">
-          We will email you a secure link to instantly sign in.
-        </p>
       </div>
     </div>
   )
