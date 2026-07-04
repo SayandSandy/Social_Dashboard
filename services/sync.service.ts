@@ -106,6 +106,7 @@ export class SyncService {
           likeCount: node.like_count || 0,
           commentsCount: node.comment_count || 0,
           views: node.view_count || null,
+          repostsCount: node.media_repost_count || null,
           isStory: false,
           syncedAt: new Date()
         });
@@ -121,6 +122,7 @@ export class SyncService {
           reach: null, // Private metric
           savedCount: null, // Private metric
           sharesCount: null, // Private metric
+          repostsCount: node.media_repost_count || null,
         } as any);
 
         rowsUpserted += 2;

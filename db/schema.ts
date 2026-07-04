@@ -69,6 +69,7 @@ export const igContentSnapshots = pgTable('ig_content_snapshots', {
   reach: integer('reach'),
   savedCount: integer('saved_count'),
   sharesCount: integer('shares_count'),
+  repostsCount: integer('reposts_count'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (t) => [
   unique().on(t.accountId, t.igMediaId, t.snapshotDate)

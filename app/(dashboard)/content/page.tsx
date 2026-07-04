@@ -22,6 +22,9 @@ export default async function ContentLibraryPage() {
     timestamp: item.timestamp,
     likeCount: item.likeCount || 0,
     commentsCount: item.commentsCount || 0,
+    repostsCount: item.repostsCount,
+    sharesCount: item.sharesCount,
+    savedCount: item.savedCount,
     permalink: item.permalink,
   })) as ContentItem[];
 
