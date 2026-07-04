@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       email_confirm: true 
     });
 
-    if (error && error.message.includes('already exists')) {
+    if (error && (error.message.includes('already exists') || error.message.includes('already been registered') || error.status === 422)) {
       // User already exists, let's just make sure their Drizzle record exists
       // We don't actually need the user object here because the client will just login
       
