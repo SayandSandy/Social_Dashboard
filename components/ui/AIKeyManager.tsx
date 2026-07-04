@@ -33,8 +33,30 @@ export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false, in
       if (!res.ok) throw new Error('Failed to save');
       setMessage('Settings saved successfully!');
       setApiKey(''); // Clear for security
+      setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
       setMessage('Error saving settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch('/api/users/ai-settings', {
+        method: 'DELETE',
+      });
+      
+      if (!res.ok) throw new Error('Failed to disconnect');
+      setMessage('Disconnected successfully!');
+      setApiKey('');
+      setBaseUrl('');
+      setModel('');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      setMessage('Error disconnecting.');
     } finally {
       setSaving(false);
     }
@@ -81,10 +103,15 @@ export function AIKeyManager({ initialProvider = 'anthropic', hasKey = false, in
               />
             </div>
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
             <Button onClick={handleSave} disabled={saving || !apiKey} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full md:w-auto">
               {saving ? 'Saving...' : 'Save Settings'}
             </Button>
+            {hasKey && (
+              <Button onClick={handleDisconnect} disabled={saving} variant="destructive" className="w-full md:w-auto">
+                Disconnect
+              </Button>
+            )}
           </div>
         </div>
         {provider === 'custom' && (

@@ -6,6 +6,13 @@ import { AIInsightsService } from '../../../../services/ai-insights.service';
 
 export async function POST(request: Request) {
   try {
+    const url = new URL(request.url);
+    const userId = url.searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ success: true }); // Missing user context
+    }
+
     const body = await request.json();
     const message = body.message;
 
@@ -15,11 +22,18 @@ export async function POST(request: Request) {
 
     const chatId = message.chat.id.toString();
     const text = message.text.trim();
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+    // Look up the user
+    const userList = await db.select().from(users).where(eq(users.id, userId));
+    if (userList.length === 0) {
+      return NextResponse.json({ success: true });
+    }
+
+    const user = userList[0];
+    const botToken = user.telegramBotToken;
 
     if (!botToken) {
-      console.error('TELEGRAM_BOT_TOKEN is not set');
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }); // Should not happen if webhook was set
     }
 
     const sendMessage = async (msg: string) => {
@@ -30,36 +44,35 @@ export async function POST(request: Request) {
       });
     };
 
-    // 1. Handle Connection (/start code)
-    if (text.startsWith('/start ')) {
-      const code = text.replace('/start ', '').trim();
-      
-      const userList = await db.select().from(users).where(eq(users.telegramConnectCode, code));
-      if (userList.length === 0) {
-        await sendMessage('Invalid connection code. Please check your dashboard and try again.');
+    // 1. Handle claiming ownership on first /start
+    if (!user.telegramChatId) {
+      if (text === '/start') {
+        await db.update(users).set({ telegramChatId: chatId }).where(eq(users.id, user.id));
+        await sendMessage('✅ You are now the owner of this bot! It is securely linked to your Instagram Analytics dashboard. You can now ask me questions about your analytics.');
+        return NextResponse.json({ success: true });
+      } else {
+        await sendMessage('Please send /start to claim ownership of this bot.');
         return NextResponse.json({ success: true });
       }
-
-      // Link the account
-      await db.update(users).set({ telegramChatId: chatId, telegramConnectCode: null }).where(eq(users.id, userList[0].id));
-      await sendMessage('✅ Successfully connected to your Instagram Analytics Dashboard! You can now ask me questions about your analytics.');
-      return NextResponse.json({ success: true });
     }
 
-    // 2. Handle standard messages
-    const userList = await db.select().from(users).where(eq(users.telegramChatId, chatId));
-    if (userList.length === 0) {
-      await sendMessage('⚠️ You have not connected your account. Please go to your dashboard, generate a connection code, and send it here using /start <code_from_dashboard>.');
-      return NextResponse.json({ success: true });
+    // 2. Prevent strangers from using the bot
+    if (user.telegramChatId !== chatId) {
+      return NextResponse.json({ success: true }); // Silently ignore strangers
     }
 
-    const user = userList[0];
+    // Handle normal /start
+    if (text === '/start') {
+        await sendMessage('✅ Welcome back! Your bot is ready. You can ask me questions about your analytics.');
+        return NextResponse.json({ success: true });
+    }
+
+    // 3. Process with AI
     if (!user.aiProvider || !user.aiApiKey) {
       await sendMessage('⚠️ Please connect an AI provider in your dashboard before asking questions.');
       return NextResponse.json({ success: true });
     }
 
-    // 3. Process with AI
     try {
       await sendMessage('Thinking... 🧠');
       

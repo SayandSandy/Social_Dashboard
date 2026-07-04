@@ -57,6 +57,7 @@ export default async function SettingsPage() {
           <ChatIntegration 
             hasAiSettings={hasAiSettings}
             telegramChatId={userData?.telegramChatId}
+            telegramBotToken={userData?.telegramBotToken}
           />
         </section>
       </div>

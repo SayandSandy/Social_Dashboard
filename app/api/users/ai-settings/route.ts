@@ -46,3 +46,29 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Clear AI settings
+    await db.update(users).set({
+      aiApiKey: null,
+      aiBaseUrl: null,
+      aiModel: null
+    }).where(eq(users.id, user.id));
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error clearing AI settings:', error);
+    return NextResponse.json(
+      { error: 'Failed to clear settings', details: error.message },
+      { status: 500 }
+    );
+  }
+}

@@ -3,48 +3,43 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./card";
 import { Button } from "./button";
-import { MessageCircle, Copy, Check } from 'lucide-react';
+import { MessageCircle, Key, Check } from 'lucide-react';
 import { createClient } from '../../lib/supabase/client';
 
 interface ChatIntegrationProps {
   hasAiSettings: boolean;
   telegramChatId?: string | null;
+  telegramBotToken?: string | null;
 }
 
-export function ChatIntegration({ hasAiSettings, telegramChatId }: ChatIntegrationProps) {
-  const [code, setCode] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
+export function ChatIntegration({ hasAiSettings, telegramChatId, telegramBotToken }: ChatIntegrationProps) {
+  const [token, setToken] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const generateCode = async () => {
-    setGenerating(true);
+  const handleSaveToken = async () => {
+    setSaving(true);
+    setMessage('');
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Generate a random 6-digit code
-      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // We must use an API route to generate the code securely.
-      
-      const res = await fetch('/api/users/generate-code', { method: 'POST' });
+      const res = await fetch('/api/users/telegram-token', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramBotToken: token })
+      });
       if (res.ok) {
+        setMessage('Bot Token saved! Your bot is ready to be connected.');
+        setToken(''); // Clear input for security
+        // Reload page to reflect new state
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
         const data = await res.json();
-        setCode(data.code);
+        setMessage(data.error || 'Failed to save token');
       }
-    } catch (e) {
+    } catch (e: any) {
+      setMessage('Error saving token.');
       console.error(e);
     } finally {
-      setGenerating(false);
-    }
-  };
-
-  const copyCode = () => {
-    if (code) {
-      navigator.clipboard.writeText(`/start ${code}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setSaving(false);
     }
   };
 
@@ -56,7 +51,7 @@ export function ChatIntegration({ hasAiSettings, telegramChatId }: ChatIntegrati
           <span>Telegram Integration</span>
         </CardTitle>
         <CardDescription className="text-slate-400">
-          Chat directly with your Instagram Analytics data using Telegram.
+          Chat directly with your Instagram Analytics data using your own personalized Telegram Bot.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -69,29 +64,71 @@ export function ChatIntegration({ hasAiSettings, telegramChatId }: ChatIntegrati
             <Check className="w-5 h-5" />
             <div>
               <div className="font-semibold">Successfully Connected!</div>
-              <div className="text-sm text-emerald-500">Your Telegram account is linked. Message the bot to ask questions!</div>
+              <div className="text-sm text-emerald-500">Your Telegram Bot is fully linked and configured as your analytics assistant.</div>
+            </div>
+          </div>
+        ) : telegramBotToken ? (
+          <div className="space-y-4 p-4 bg-blue-500/10 rounded-md border border-blue-500/20">
+            <h3 className="font-semibold text-blue-400">Bot Configured! Final Step:</h3>
+            <p className="text-sm text-slate-300">
+              Open Telegram and send <code>/start</code> to your bot. The first person to message the bot will be registered as the owner.
+            </p>
+            <p className="text-xs text-slate-400 italic">
+              (Once you send the message, refresh this page to see the green connected status.)
+            </p>
+            <div className="pt-4 border-t border-blue-500/20">
+              <p className="text-sm text-slate-300 mb-2">Want to change your bot?</p>
+              <div className="flex gap-2">
+                <input 
+                  type="password" 
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Paste new HTTP API Token..."
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-md py-2 px-3 text-white outline-none focus:border-blue-500"
+                />
+                <Button onClick={handleSaveToken} disabled={saving || !token} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  {saving ? 'Saving...' : 'Update Token'}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="text-slate-300">
-              1. Click the button below to generate a secure connection code.<br/>
-              2. Open Telegram and search for our bot.<br/>
-              3. Send the bot your connection code to link your account.
+          <div className="space-y-6">
+            <div className="space-y-3 text-sm text-slate-300">
+              <p>To keep your data private and secure, you will use your own personal Telegram Bot. It's free and takes 30 seconds.</p>
+              <ol className="list-decimal pl-5 space-y-2 text-slate-400">
+                <li>Open Telegram and search for <strong>@BotFather</strong>.</li>
+                <li>Send the command <code>/newbot</code> and follow the prompts to choose a name and username.</li>
+                <li>BotFather will give you an <strong>HTTP API Token</strong> (e.g. <code>123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11</code>).</li>
+                <li>Paste that token below.</li>
+              </ol>
             </div>
             
-            {!code ? (
-              <Button onClick={generateCode} disabled={generating} className="bg-blue-600 hover:bg-blue-700 text-white">
-                {generating ? 'Generating...' : 'Generate Connection Code'}
-              </Button>
-            ) : (
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-md flex items-center justify-between">
-                <code className="text-lg font-mono text-blue-400">/start {code}</code>
-                <Button variant="outline" size="sm" onClick={copyCode} className="border-slate-700 hover:bg-slate-800">
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Telegram Bot Token</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Key className="h-4 w-4 text-slate-500" />
+                  </div>
+                  <input 
+                    type="password" 
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="Paste HTTP API Token here..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-md py-2 pl-10 pr-3 text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+                <Button onClick={handleSaveToken} disabled={saving || !token} className="bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap">
+                  {saving ? 'Saving...' : 'Connect Bot'}
                 </Button>
               </div>
-            )}
+              {message && (
+                <div className={`mt-2 text-sm ${message.includes('saved') ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {message}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
