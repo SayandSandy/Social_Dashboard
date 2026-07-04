@@ -51,7 +51,7 @@ export default function LoginPage() {
       fetch('/api/sync', { method: 'POST' }).catch(console.error); // Fire and forget
 
       // 4. Redirect
-      router.push('/dashboard');
+      router.push('/');
       router.refresh();
 
     } catch (err: any) {
