@@ -24,6 +24,14 @@ export class ContentRepository {
       .orderBy(desc(igContent.timestamp));
   }
 
+  async getRecentContent(accountId: string, limit: number) {
+    return db.select()
+      .from(igContent)
+      .where(eq(igContent.accountId, accountId))
+      .orderBy(desc(igContent.timestamp))
+      .limit(limit);
+  }
+
   async getContentById(accountId: string, id: string) {
     const result = await db.select()
       .from(igContent)
