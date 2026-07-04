@@ -9,62 +9,72 @@ import { LogOutButton } from '../../../components/ui/LogOutButton';
 import { InstagramConnect } from '../../../components/ui/InstagramConnect';
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return null;
+    if (!user) return null;
 
-  const dbUser = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
-  const userData = dbUser[0];
+    const dbUser = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+    const userData = dbUser[0];
 
-  const hasAiSettings = !!(userData?.aiProvider && userData?.aiApiKey);
+    const hasAiSettings = !!(userData?.aiProvider && userData?.aiApiKey);
 
-  return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-        <p className="text-slate-400">Manage your account, AI providers, and integrations.</p>
-      </div>
+    return (
+      <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
+          <p className="text-slate-400">Manage your account, AI providers, and integrations.</p>
+        </div>
 
-      <div className="space-y-6">
-        <section>
-          <h2 className="text-xl font-semibold text-white mb-4">Account</h2>
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex items-center justify-between">
-            <div>
-              <p className="text-slate-300 font-medium">{userData?.email}</p>
-              <p className="text-sm text-slate-500 mt-1">Logged in via Supabase</p>
+        <div className="space-y-6">
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-4">Account</h2>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex items-center justify-between">
+              <div>
+                <p className="text-slate-300 font-medium">{userData?.email}</p>
+                <p className="text-sm text-slate-500 mt-1">Logged in via Supabase</p>
+              </div>
+              <LogOutButton />
             </div>
-            <LogOutButton />
-          </div>
-        </section>
+          </section>
 
-        <section>
-          <h2 className="text-xl font-semibold text-white mb-4">Instagram Integration</h2>
-          <InstagramConnect initialUsername={userData?.igUsername} />
-        </section>
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-4">Instagram Integration</h2>
+            <InstagramConnect initialUsername={userData?.igUsername} />
+          </section>
 
-        <section>
-          <h2 className="text-xl font-semibold text-white mb-4">AI Integration</h2>
-          <AIKeyManager 
-            initialProvider={userData?.aiProvider || 'openai'} 
-            hasKey={!!userData?.aiApiKey} 
-            initialBaseUrl={userData?.aiBaseUrl}
-            initialModel={userData?.aiModel}
-          />
-        </section>
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-4">AI Integration</h2>
+            <AIKeyManager 
+              initialProvider={userData?.aiProvider || 'openai'} 
+              hasKey={!!userData?.aiApiKey} 
+              initialBaseUrl={userData?.aiBaseUrl}
+              initialModel={userData?.aiModel}
+            />
+          </section>
 
-        <section>
-          <h2 className="text-xl font-semibold text-white mb-4">Chatbot Integrations</h2>
-          <ChatIntegration 
-            hasAiSettings={hasAiSettings}
-            telegramChatId={userData?.telegramChatId}
-            telegramBotToken={userData?.telegramBotToken}
-          />
-          <GoogleSheetsIntegration 
-            initialGoogleSheetId={userData?.googleSheetId}
-          />
-        </section>
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-4">Chatbot Integrations</h2>
+            <ChatIntegration 
+              hasAiSettings={hasAiSettings}
+              telegramChatId={userData?.telegramChatId}
+              telegramBotToken={userData?.telegramBotToken}
+            />
+            <GoogleSheetsIntegration 
+              initialGoogleSheetId={userData?.googleSheetId}
+            />
+          </section>
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (error: any) {
+    return (
+      <div className="p-6 bg-red-900/20 border border-red-500/50 rounded-lg max-w-2xl mx-auto mt-8 text-center">
+        <h2 className="text-xl font-bold text-red-400 mb-2">Settings Render Error</h2>
+        <p className="text-red-200 font-mono text-sm break-all">{error.message || JSON.stringify(error)}</p>
+        <p className="text-slate-400 text-sm mt-4">Please screenshot this box so I can fix the issue!</p>
+      </div>
+    );
+  }
 }
