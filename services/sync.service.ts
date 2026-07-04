@@ -31,8 +31,10 @@ export class SyncService {
       Object.keys(params).forEach(key => searchParams.append(key, String(params[key])));
       url += `?${searchParams.toString()}`;
     } else {
-      (options.headers as any)['Content-Type'] = 'application/json';
-      options.body = JSON.stringify(params);
+      (options.headers as any)['Content-Type'] = 'application/x-www-form-urlencoded';
+      const searchParams = new URLSearchParams();
+      Object.keys(params).forEach(key => searchParams.append(key, String(params[key])));
+      options.body = searchParams.toString();
     }
     
     const res = await fetch(url, options);
@@ -52,12 +54,11 @@ export class SyncService {
 
     try {
       // 1. Fetch Profile Info
-      // NOTE: Update the endpoint name here if it differs in your RapidAPI Snippet!
-      // Often parameters are named 'username', 'user', or 'username_or_url'.
-      const profileData = await this.fetchRapidAPI('ig_get_ib_profile_hover_php', { username: this.igUsername }, 'GET');
-      const user = profileData.user_data;
+      // Using RockSolid API endpoints:
+      const profileData = await this.fetchRapidAPI('ig_get_fb_profile.php', { username_or_url: this.igUsername, data: 'basic' }, 'POST');
+      const user = profileData;
 
-      if (!user) throw new Error("Could not parse user_data from API");
+      if (!user || !user.pk) throw new Error("Could not parse user data from API");
 
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -80,8 +81,8 @@ export class SyncService {
       let rowsUpserted = 1;
 
       // 2. Fetch Latest Posts with Likes & Comments
-      // NOTE: Update the endpoint name here if it differs!
-      const postsData = await this.fetchRapidAPI('user_posts', { username: this.igUsername }, 'POST');
+      // Using RockSolid API endpoints:
+      const postsData = await this.fetchRapidAPI('get_ig_user_posts.php', { username_or_url: this.igUsername, amount: '12' }, 'POST');
       const posts = postsData.posts || [];
 
       for (const item of posts) {
