@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const results = [];
 
     for (const user of allUsers) {
-      if (!user.igAccessToken || !user.igBusinessAccountId) continue;
+      if (!user.igUsername) continue;
       if (!user.aiProvider || !user.aiApiKey) continue; // Requires AI settings now
 
       const analyticsService = new AnalyticsService(user.id);
