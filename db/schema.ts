@@ -5,6 +5,7 @@ export const users = pgTable('users', {
   email: text('email'),
   igAccessToken: text('ig_access_token'),
   igBusinessAccountId: text('ig_business_account_id'),
+  igUsername: text('ig_username'),
   aiProvider: text('ai_provider').default('anthropic'),
   aiApiKey: text('ai_api_key'),
   aiBaseUrl: text('ai_base_url'),

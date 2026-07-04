@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { AIKeyManager } from '../../../components/ui/AIKeyManager';
 import { ChatIntegration } from '../../../components/ui/ChatIntegration';
 import { LogOutButton } from '../../../components/ui/LogOutButton';
+import { InstagramConnect } from '../../../components/ui/InstagramConnect';
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -34,6 +35,11 @@ export default async function SettingsPage() {
             </div>
             <LogOutButton />
           </div>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-white mb-4">Instagram Integration</h2>
+          <InstagramConnect initialUsername={userData?.igUsername} />
         </section>
 
         <section>

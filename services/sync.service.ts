@@ -1,18 +1,33 @@
-import { InstagramService } from './instagram.service';
 import { OverviewRepository } from '../repositories/overview.repository';
 import { ContentRepository } from '../repositories/content.repository';
 import { SyncLogRepository } from '../repositories/sync-log.repository';
 
 export class SyncService {
-  private igService: InstagramService;
   private overviewRepo = new OverviewRepository();
   private contentRepo = new ContentRepository();
   private syncLogRepo = new SyncLogRepository();
   private accountId: string;
+  private igUsername: string;
 
-  constructor(accountId: string, token: string, businessAccountId: string) {
+  constructor(accountId: string, igUsername: string) {
     this.accountId = accountId;
-    this.igService = new InstagramService(token, businessAccountId);
+    this.igUsername = igUsername;
+  }
+
+  private async fetchRapidAPI(endpoint: string, params: Record<string, string>) {
+    // We are using a standard RapidAPI Instagram Scraper here.
+    // Ensure RAPIDAPI_KEY is in .env.local
+    const url = new URL(`https://instagram-scraper-api2.p.rapidapi.com/v1/${endpoint}`);
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+    
+    const res = await fetch(url.toString(), {
+      headers: {
+        'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
+        'x-rapidapi-host': 'instagram-scraper-api2.p.rapidapi.com'
+      }
+    });
+    if (!res.ok) throw new Error(`RapidAPI Error: ${res.statusText}`);
+    return res.json();
   }
 
   async runDailySync() {
@@ -26,92 +41,66 @@ export class SyncService {
     const logId = logEntry[0].id;
 
     try {
-      // 1. Fetch yesterday's data
+      // 1. Fetch Profile Info
+      const profileData = await this.fetchRapidAPI('info', { username_or_id_or_url: this.igUsername });
+      const user = profileData.data;
+
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-      const today = new Date(yesterday);
-      today.setDate(today.getDate() + 1);
+      const dateStr = yesterday.toISOString().split('T')[0];
 
-      const since = Math.floor(yesterday.getTime() / 1000);
-      const until = Math.floor(today.getTime() / 1000);
+      // Upsert Overview
+      await this.overviewRepo.upsert({
+        accountId: this.accountId,
+        date: dateStr,
+        followersCount: user.follower_count,
+        followingCount: user.following_count,
+        mediaCount: user.media_count,
+        // The following are not available in unofficial APIs, so we leave them null
+        views: null,
+        reach: null,
+        accountsEngaged: null,
+        profileActivity: null,
+        websiteClicks: null,
+      } as any);
 
-      // Fetch overview insights
-      const accountInsights = await this.igService.getAccountInsights(since, until);
-      
-      const metrics: Record<string, any> = { accountId: this.accountId, date: yesterday.toISOString().split('T')[0] };
-      accountInsights.data.forEach(metric => {
-        if (metric.values && metric.values.length > 0) {
-          const val = metric.values[0].value;
-          const map: Record<string, string> = {
-            'views': 'views',
-            'reach': 'reach',
-            'accounts_engaged': 'accountsEngaged',
-            'profile_activity': 'profileActivity',
-            'website_clicks': 'websiteClicks',
-            'follower_count': 'followersCount'
-          };
-          if (map[metric.name]) {
-            metrics[map[metric.name]] = val;
-          }
-        }
-      });
+      let rowsUpserted = 1;
 
-      await this.overviewRepo.upsert(metrics as any);
+      // 2. Fetch Latest Posts
+      const postsData = await this.fetchRapidAPI('posts', { username_or_id_or_url: this.igUsername });
+      const items = postsData.data?.items || [];
 
-      // 2. Fetch media list and insights
-      const mediaList = await this.igService.getMediaList();
-      let rowsUpserted = 1; // 1 for overview
-
-      // Promise.all with limit for rate limiting
-      for (const media of mediaList) {
+      for (const item of items) {
         // Upsert media base data
         await this.contentRepo.upsertContent({
           accountId: this.accountId,
-          igMediaId: media.id,
-          mediaType: media.media_type,
-          caption: media.caption,
-          permalink: media.permalink,
-          thumbnailUrl: media.thumbnail_url,
-          timestamp: new Date(media.timestamp),
-          likeCount: media.like_count,
-          commentsCount: media.comments_count,
-          isStory: media.media_type === 'STORY',
+          igMediaId: item.id,
+          mediaType: item.media_type === 1 ? 'IMAGE' : item.media_type === 2 ? 'VIDEO' : 'CAROUSEL_ALBUM',
+          caption: item.caption?.text || '',
+          permalink: `https://instagram.com/p/${item.code}`,
+          thumbnailUrl: item.thumbnail_url || item.image_versions2?.candidates?.[0]?.url,
+          timestamp: new Date(item.taken_at * 1000),
+          likeCount: item.like_count,
+          commentsCount: item.comment_count,
+          views: item.play_count || null,
+          isStory: false,
           syncedAt: new Date()
         });
 
-        // Get insights
-        try {
-          const mediaInsights = await this.igService.getMediaInsights(media.id, media.media_type);
-          const snapshot: Record<string, any> = {
-            accountId: this.accountId,
-            igMediaId: media.id,
-            snapshotDate: yesterday.toISOString().split('T')[0]
-          };
+        // Upsert Snapshot
+        await this.contentRepo.upsertSnapshot({
+          accountId: this.accountId,
+          igMediaId: item.id,
+          snapshotDate: dateStr,
+          likeCount: item.like_count,
+          commentsCount: item.comment_count,
+          views: item.play_count || null,
+          reach: null, // Private metric
+          savedCount: null, // Private metric
+          sharesCount: null, // Private metric
+        } as any);
 
-          mediaInsights.data.forEach(metric => {
-            if (metric.values && metric.values.length > 0) {
-              const val = metric.values[0].value;
-              const map: Record<string, string> = {
-                'views': 'views',
-                'reach': 'reach',
-                'saved_count': 'savedCount',
-                'shares_count': 'sharesCount',
-                'total_likes': 'likeCount',
-                'total_comments': 'commentsCount'
-              };
-              if (map[metric.name]) {
-                snapshot[map[metric.name]] = val;
-              }
-            }
-          });
-
-          await this.contentRepo.upsertSnapshot(snapshot as any);
-          rowsUpserted += 2;
-        } catch (e) {
-          console.error(`Failed to fetch insights for media ${media.id}`, e);
-          // Continue with other media
-        }
+        rowsUpserted += 2;
       }
 
       await this.syncLogRepo.update(logId, {

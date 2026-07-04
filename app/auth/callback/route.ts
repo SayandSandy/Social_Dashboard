@@ -14,26 +14,7 @@ export async function GET(request: Request) {
     
     if (!error && data?.session) {
       const session = data.session;
-      const providerToken = session.provider_token;
       
-      // Auto-fetch Instagram Business Account ID if we have a Facebook token
-      let igBusinessAccountId = null;
-      if (providerToken) {
-        try {
-          const res = await fetch(`https://graph.facebook.com/v22.0/me/accounts?fields=instagram_business_account,name&access_token=${providerToken}`);
-          const fbData = await res.json();
-          if (fbData && fbData.data) {
-            // Find the first page connected to an Instagram Business Account
-            const page = fbData.data.find((p: any) => p.instagram_business_account?.id);
-            if (page) {
-              igBusinessAccountId = page.instagram_business_account.id;
-            }
-          }
-        } catch (e) {
-          console.error('Error fetching IG Business Account during OAuth:', e);
-        }
-      }
-
       // Upsert the user into our public schema so foreign keys work
       if (session.user) {
         const { db } = await import('../../../db');
@@ -41,14 +22,10 @@ export async function GET(request: Request) {
         await db.insert(users).values({
           id: session.user.id,
           email: session.user.email,
-          igAccessToken: providerToken || null,
-          igBusinessAccountId: igBusinessAccountId
         }).onConflictDoUpdate({
           target: users.id,
           set: {
             email: session.user.email,
-            igAccessToken: providerToken || null,
-            igBusinessAccountId: igBusinessAccountId
           }
         });
       }

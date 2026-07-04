@@ -28,9 +28,9 @@ export async function POST(request: Request) {
 
     const results = [];
     for (const user of usersToSync) {
-      if (!user.igAccessToken || !user.igBusinessAccountId) continue;
+      if (!user.igUsername) continue;
 
-      const syncService = new SyncService(user.id, user.igAccessToken, user.igBusinessAccountId);
+      const syncService = new SyncService(user.id, user.igUsername);
       try {
         const result = await syncService.runDailySync();
         results.push({ accountId: user.id, result });
