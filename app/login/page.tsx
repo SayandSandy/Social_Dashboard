@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { createClient } from '../../lib/supabase/client'
 import { Button } from '../../components/ui/button'
 import { useRouter } from 'next/navigation'
-import { AtSign } from 'lucide-react'
+import { AtSign, Facebook } from 'lucide-react'
 
 export default function LoginPage() {
   const supabase = createClient()
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fbLoading, setFbLoading] = useState(false)
   const [message, setMessage] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -60,6 +61,25 @@ export default function LoginPage() {
     }
   }
 
+  const handleFacebookLogin = async () => {
+    setFbLoading(true);
+    setMessage('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement',
+        }
+      });
+      
+      if (error) throw error;
+    } catch (err: any) {
+      setMessage(`Error: ${err.message}`);
+      setFbLoading(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-950 items-center justify-center text-slate-100 p-4">
       <div className="max-w-md w-full p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-xl flex flex-col items-center text-center space-y-6">
@@ -91,6 +111,28 @@ export default function LoginPage() {
           </Button>
         </form>
         
+        <div className="w-full flex items-center justify-center space-x-4">
+          <div className="h-px bg-slate-800 flex-1"></div>
+          <span className="text-sm text-slate-500 font-medium">OR</span>
+          <div className="h-px bg-slate-800 flex-1"></div>
+        </div>
+
+        <div className="w-full">
+          <Button
+            type="button"
+            onClick={handleFacebookLogin}
+            disabled={fbLoading || loading}
+            variant="outline"
+            className="w-full border-slate-700 bg-slate-900 hover:bg-slate-800 hover:text-white text-slate-200 font-semibold py-6 flex items-center justify-center"
+          >
+            <Facebook className="mr-2 h-5 w-5 text-blue-500" />
+            {fbLoading ? 'Connecting...' : 'Login with Facebook'}
+          </Button>
+          <p className="text-xs text-slate-500 mt-3 text-center">
+            Full authentication required for detailed insights and real-time API access.
+          </p>
+        </div>
+
         {message && (
           <p className={`text-sm ${message.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'}`}>
             {message}
