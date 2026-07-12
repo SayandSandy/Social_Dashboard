@@ -86,7 +86,7 @@ export class SyncService {
 
       // 2. Fetch Latest Posts with Likes & Comments
       // Using RockSolid API endpoints:
-      const postsData = await this.fetchRapidAPI('get_ig_user_posts.php', { username_or_url: this.igUsername, amount: '12' }, 'POST');
+      const postsData = await this.fetchRapidAPI('get_ig_user_posts.php', { username_or_url: this.igUsername, amount: '50' }, 'POST');
       const posts = postsData.posts || [];
 
       for (const item of posts) {
